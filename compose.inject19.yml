@@ -1,0 +1,36 @@
+services:
+  lab-dependency:
+    image: python:3.13-slim
+    restart: unless-stopped
+    mem_limit: 64m
+    user: "65534:65534"
+    read_only: true
+    ports:
+      - "127.0.0.1:18081:8081"
+    volumes:
+      - ./injects/19-dependance/dependency.py:/app/dependency.py:ro
+    command: ["python", "-u", "/app/dependency.py"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+  lab-app:
+    image: python:3.13-slim
+    restart: unless-stopped
+    mem_limit: 64m
+    user: "65534:65534"
+    read_only: true
+    environment:
+      DEPENDENCY_URL: http://lab-dependency:8081/health
+    ports:
+      - "127.0.0.1:18080:8080"
+    volumes:
+      - ./injects/19-dependance/app.py:/app/app.py:ro
+    command: ["python", "-u", "/app/app.py"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

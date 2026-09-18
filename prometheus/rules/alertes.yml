@@ -1,0 +1,72 @@
+groups:
+  - name: alpesnet-infrastructure
+    interval: 30s
+    rules:
+      - alert: CollecteEndpointEnEchec
+        expr: up{job=~"linux|windows"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: 'Collecte perdue : {{ $labels.endpoint }}'
+          description: 'La cible {{ $labels.instance }} ({{ $labels.job }}) ne répond plus à la collecte depuis 2 min.'
+          action: 'Vérifier Targets, réseau, exporter et état de la VM ; consulter le dashboard Grafana.'
+
+      - alert: ServiceHTTPIndisponible
+        expr: |
+          (probe_success{job=~"sonde_.*"} == 0)
+          and on(job, instance) (up{job=~"sonde_.*"} == 1)
+        for: 1m
+        labels:
+          severity: critical
+          team: infrastructure
+        annotations:
+          summary: 'HTTP en échec : {{ $labels.endpoint }} / {{ $labels.service }}'
+          description: 'La sonde de {{ $labels.instance }} échoue depuis 1 min, avec une collecte valide.'
+          action: 'Tester HTTP, contrôler nginx ou le site IIS et rechercher les journaux de cet endpoint dans Kibana.'
+
+      - alert: StockagePresquePlein
+        expr: |
+          (100 * (1 - node_filesystem_free_bytes{job="linux",mountpoint="/",fstype!="rootfs"}
+          / node_filesystem_size_bytes{job="linux",mountpoint="/",fstype!="rootfs"}) > 85)
+          or
+          (100 * (1 - windows_logical_disk_free_bytes{job="windows",volume="C:"}
+          / windows_logical_disk_size_bytes{job="windows",volume="C:"}) > 85)
+        for: 10m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: 'Stockage presque plein : {{ $labels.endpoint }}'
+          description: 'Cible {{ $labels.instance }}, volume {{ $labels.mountpoint }}{{ $labels.volume }} : {{ printf "%.1f" $value }} % utilisés, > 85 % depuis 10 min.'
+          action: 'Vérifier espace libre et croissance ; identifier les fichiers concernés avant nettoyage ou extension.'
+
+      - alert: CPUEleve
+        expr: |
+          (100 * (1 - avg by (instance, job, endpoint) (
+            rate(node_cpu_seconds_total{job="linux",mode="idle"}[2m])
+          )) > 80)
+          or
+          (100 * (1 - avg by (instance, job, endpoint) (
+            rate(windows_cpu_time_total{job="windows",mode="idle"}[2m])
+          )) > 80)
+        for: 2m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: 'CPU élevé : {{ $labels.endpoint }}'
+          description: 'Cible {{ $labels.instance }} : CPU moyen {{ printf "%.1f" $value }} %, > 80 % depuis 2 min ; calcul sur 2 min.'
+          action: 'Identifier le processus, confronter au travail prévu et à la durée des sondes dans Grafana.'
+
+      - alert: CollecteSondeEnEchec
+        expr: up{job=~"sonde_.*"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: 'Résultat de sonde inaccessible : {{ $labels.endpoint }}'
+          description: 'Collecte en échec depuis 2 min pour {{ $labels.instance }} ; disponibilité du service inconnue.'
+          action: 'Vérifier Targets, Blackbox, réseau et paramètres de sonde avant de conclure sur le service.'

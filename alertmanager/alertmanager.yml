@@ -1,0 +1,12 @@
+route:
+  receiver: journal-local
+  group_by: [alertname, job, instance]
+  group_wait: 10s
+  group_interval: 30s
+  repeat_interval: 1h
+receivers:
+  - name: journal-local
+    webhook_configs:
+      - url: http://alert-receiver:8080/alerts
+        send_resolved: true
+

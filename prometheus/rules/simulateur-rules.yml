@@ -1,0 +1,67 @@
+groups:
+  - name: alpesnet-injects-simules
+    interval: 5s
+    rules:
+      - alert: DNSRequetesEnEchec
+        expr: lab_dns_query_success{scenario="11"} == 0
+        for: 20s
+        labels: {severity: warning, team: infrastructure, scenario: "11"}
+        annotations:
+          summary: "Échecs répétés de la sonde DNS"
+          action: "Comparer la disponibilité du serveur, le résultat des requêtes et les journaux DNS."
+
+      - alert: ErreursInterfaceReseau
+        expr: lab_network_receive_errors_rate{scenario="12"} > 5
+        for: 20s
+        labels: {severity: warning, team: infrastructure, scenario: "12"}
+        annotations:
+          summary: "Augmentation du taux d'erreurs réseau"
+          action: "Identifier l'interface, comparer latence, erreurs, CPU et mémoire, puis examiner les événements réseau."
+
+      - alert: PoolDHCPPresqueEpuise
+        expr: lab_dhcp_available_leases{scenario="13"} <= 2
+        for: 20s
+        labels: {severity: warning, team: infrastructure, scenario: "13"}
+        annotations:
+          summary: "Le pool DHCP ne contient presque plus d'adresses disponibles"
+          action: "Vérifier les baux disponibles, les demandes en échec et les journaux DHCP."
+
+      - alert: CertificatTLSProcheExpiration
+        expr: (lab_tls_certificate_expiry_timestamp_seconds{scenario="14"} - time()) / 86400 < 7
+        for: 10s
+        labels: {severity: warning, team: infrastructure, scenario: "14"}
+        annotations:
+          summary: "Certificat TLS à moins de sept jours de son expiration"
+          action: "Vérifier la date, le service concerné et préparer le renouvellement contrôlé."
+
+      - alert: SauvegardeIncomplete
+        expr: lab_backup_last_run_success{scenario="15"} == 0
+        for: 20s
+        labels: {severity: warning, team: infrastructure, scenario: "15"}
+        annotations:
+          summary: "La dernière sauvegarde s'est terminée avec une erreur"
+          action: "Comparer les tailles attendue et réelle, puis examiner le journal du job."
+
+      - alert: EchecsAuthentificationMassifs
+        expr: lab_auth_failures_per_minute{scenario="16"} >= 10
+        for: 20s
+        labels: {severity: critical, team: infrastructure, scenario: "16"}
+        annotations:
+          summary: "Forte augmentation des échecs d'authentification"
+          action: "Vérifier la disponibilité du backend d'authentification et les journaux applicatifs."
+
+      - alert: LatenceOperationsStockage
+        expr: lab_storage_operation_duration_seconds{scenario="17"} > 2
+        for: 20s
+        labels: {severity: warning, team: infrastructure, scenario: "17"}
+        annotations:
+          summary: "Latence élevée des opérations de stockage simulées"
+          action: "Comparer la durée applicative aux ressources CPU et mémoire et examiner le journal du traitement."
+
+      - alert: ActiviteAuthentificationInhabituelle
+        expr: lab_security_auth_failures_2m{scenario="20"} >= 5
+        for: 20s
+        labels: {severity: warning, team: security, scenario: "20"}
+        annotations:
+          summary: "Activité d'authentification inhabituelle détectée"
+          action: "Identifier la période, la source et les événements associés sans supprimer les preuves."

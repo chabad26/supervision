@@ -1,0 +1,18 @@
+services:
+  lab-crashloop:
+    image: python:3.13-slim
+    restart: unless-stopped
+    mem_limit: 64m
+    user: "65534:65534"
+    read_only: true
+    ports:
+      - "127.0.0.1:18082:8082"
+    volumes:
+      - ./injects/18-conteneur/crashloop.py:/app/crashloop.py:ro
+      - ./injects/18-conteneur:/state:ro
+    command: ["python", "-u", "/app/crashloop.py"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"

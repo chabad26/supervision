@@ -1,0 +1,17 @@
+groups:
+  - name: alpesnet-injects
+    interval: 15s
+    rules:
+      - alert: ServiceDependantIndisponible
+        expr: |
+          (lab_dependency_request_success{scenario="19"} == 0)
+          and on(instance) (up{job="lab_app_inject19"} == 1)
+        for: 1m
+        labels:
+          severity: warning
+          team: infrastructure
+          scenario: "19"
+        annotations:
+          summary: "Fonction dépendante indisponible"
+          description: "L'application principale répond, mais son appel à lab-dependency échoue depuis 1 minute."
+          action: "Comparer les sondes de l'application, de la fonctionnalité et de la dépendance, puis examiner les journaux applicatifs."

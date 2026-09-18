@@ -1,0 +1,15 @@
+groups:
+  - name: alpesnet-inject18
+    interval: 5s
+    rules:
+      - alert: RedemarragesConteneurRepetes
+        expr: changes(lab_container_start_time_seconds{scenario="18"}[90s]) >= 2
+        for: 10s
+        labels:
+          severity: warning
+          team: infrastructure
+          scenario: "18"
+        annotations:
+          summary: "Redémarrages répétés du conteneur lab-crashloop"
+          description: "La date de démarrage du processus a changé au moins deux fois pendant les 90 dernières secondes."
+          action: "Vérifier le compteur de redémarrages, les ressources de l'hôte et les journaux du conteneur."

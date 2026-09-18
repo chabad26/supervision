@@ -1,0 +1,108 @@
+# Complément chargé automatiquement avec compose.yaml, dans le même dossier.
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.5.3
+    hostname: elasticsearch
+    restart: unless-stopped
+    mem_limit: 2g
+    environment:
+      discovery.type: single-node
+      xpack.ml.enabled: "false"
+    ports:
+      - "127.0.0.1:9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+      - elasticsearch_config:/usr/share/elasticsearch/config
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          test -f config/certs/http_ca.crt &&
+          [ "$$(curl -s --cacert config/certs/http_ca.crt -o /dev/null
+          -w '%{http_code}' https://localhost:9200)" = "401" ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.5.3
+    restart: unless-stopped
+    mem_limit: 1536m
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5601:5601"
+    volumes:
+      - kibana_data:/usr/share/kibana/data
+      - kibana_config:/usr/share/kibana/config
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:9.5.3
+    profiles: ["test-logstash"]
+    restart: "no"
+    mem_limit: 1536m
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      LS_JAVA_OPTS: "-Xms512m -Xmx512m"
+      PIPELINE_WORKERS: "1"
+      PIPELINE_BATCH_SIZE: "50"
+      XPACK_MONITORING_ENABLED: "false"
+      LOGSTASH_API_KEY: "${LOGSTASH_API_KEY:-}"
+    command: ["-f", "/usr/share/logstash/pipeline/test.conf"]
+    volumes:
+      - type: bind
+        source: ./logstash/pipeline/test.conf
+        target: /usr/share/logstash/pipeline/test.conf
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./certs/http_ca.crt
+        target: /usr/share/logstash/config/certs/http_ca.crt
+        read_only: true
+        bind:
+          create_host_path: false
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  blackbox:
+    image: quay.io/prometheus/blackbox-exporter:v0.28.0
+    restart: unless-stopped
+    mem_limit: 128m
+    ports:
+      - "127.0.0.1:9115:9115"
+    volumes:
+      - type: bind
+        source: ./blackbox/blackbox.yml
+        target: /config/blackbox.yml
+        read_only: true
+        bind:
+          create_host_path: false
+    command: ["--config.file=/config/blackbox.yml"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  elasticsearch_data:
+  elasticsearch_config:
+  kibana_data:
+  kibana_config:
